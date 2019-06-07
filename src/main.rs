@@ -4,7 +4,7 @@ extern crate r2pipe;
 extern crate ring;
 extern crate serde_json;
 
-use argparse::{ArgumentParser, Store, StoreTrue};
+use argparse::{ArgumentParser, Store, StoreOption, StoreTrue};
 use hashbrown::HashMap;
 use r2pipe::{R2Pipe, R2PipeSpawnOptions};
 use ring::{digest, test};
@@ -26,8 +26,6 @@ fn replace(s: &str, old: &str, new: &str, n: &mut i8) -> String {
         } else if *n < 0 || m < *n {
             *n = m;
         }
-        //let mut t = Vec::new();
-        //t.resize(s.len()+(*n)*(new.len() - old.len()), 0);
         let mut t = String::new();
         let mut w = 0;
         let mut start = 0;
@@ -177,6 +175,7 @@ fn main() {
     let mut exe_dir = "".to_string();
     let mut hash_algo = "".to_string();
     let mut out_dir = "".to_string();
+    let mut nmb_threads: Option<usize> = None;
 
     {
         let mut ap = ArgumentParser::new();
@@ -196,9 +195,18 @@ fn main() {
         ap.refer(&mut out_dir)
             .add_option(&["-o", "--outdir"], Store, "Output directory")
             .required();
+        ap.refer(&mut nmb_threads).add_option(
+            &["-t", "--threads"],
+            StoreOption,
+            "Number of threads",
+        );
         ap.parse_args_or_exit();
     }
 
+    let nmb_threads = match nmb_threads {
+        Some(v) => v,
+        None => 10,
+    };
     let mut h_nsrl = File::open(nsrl_file).unwrap();
     let hashes = Arc::new(parse_nsrl_file(&mut h_nsrl).unwrap());
 
@@ -217,15 +225,17 @@ fn main() {
 
     let paths = fs::read_dir(exe_dir).unwrap();
 
-    let exe_per_thread = 600;
     let mut vec_paths: Vec<Vec<String>> = Vec::new();
     let mut vec_paths_tmp: Vec<String> = Vec::new();
     let mut counter = 0;
+    let paths: Vec<std::result::Result<std::fs::DirEntry, std::io::Error>> = paths.collect();
+    let paths_len = paths.len();
+    let exe_per_thread = paths_len / nmb_threads;
 
     for path in paths {
-        let path_tmp = String::from(path.unwrap().path().to_str().unwrap());
+        let path = String::from(path.unwrap().path().to_str().unwrap());
+        vec_paths_tmp.push(path);
         if counter < exe_per_thread {
-            vec_paths_tmp.push(path_tmp);
             counter += 1;
         } else {
             vec_paths.push(vec_paths_tmp);
