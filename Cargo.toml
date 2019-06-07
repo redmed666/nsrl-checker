@@ -1,0 +1,15 @@
+[package]
+name = "nsrl-checker"
+version = "0.1.0"
+authors = ["Mehdi KHEMIR <med.khemir@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+argparse = "0.2.2"
+mundane = "0.3.0"
+ring = "0.14.6"
+hashbrown = "0.3"
+r2pipe = "0.4.0"
+serde_json = "1.0"
